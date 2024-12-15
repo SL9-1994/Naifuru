@@ -1,0 +1,7 @@
+[package]
+name = "naifuru"
+version = "0.1.0-alpha"
+authors = ["Yurari <320sl91994@gmail.com>"]
+edition = "2021"
+
+[dependencies]
