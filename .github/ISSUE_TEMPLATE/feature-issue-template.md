@@ -3,7 +3,7 @@ name: Feature issue template
 about: Feature issue temp
 title: "[Feat]: Title"
 labels: ''
-assignees: SL9-1994
+assignees: ''
 
 ---
 
@@ -22,7 +22,7 @@ Outline any potential challenges or obstacles you foresee in implementing this f
 
 ## Related Issues  
 Mention any issues, tasks, or dependencies related to this feature.  
-- Related Issue: #123  
+- Child Issue: #2
 
 ## Additional Context  
 Add any relevant context, references, or notes here. You can include links, screenshots, diagrams, or any other materials that help explain the feature.
