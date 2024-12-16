@@ -5,3 +5,18 @@ authors = ["Yurari <320sl91994@gmail.com>"]
 edition = "2021"
 
 [dependencies]
+clap = { version = "4", features = ["derive"] }
+env_logger = "0"
+log = "0"
+anyhow = "1"
+thiserror = "2"
+
+[profile.dev]
+opt-level = 0
+debug = true
+
+[profile.release]
+opt-level = 3
+debug = false
+overflow-checks = true
+panic = "abort"
