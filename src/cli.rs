@@ -34,10 +34,13 @@ use crate::{
 /// - `ValidationError`: Enum representing possible validation errors including IO errors, invalid file extensions, and path type mismatches.
 ///
 /// # Tests
-/// This module also contains unit tests for the `Args` struct's validation methods:
-/// - `test_validate_input_file_path_valid`: Tests that a valid CSV file path is correctly validated.orre
-/// - `test_validate_input_file_path_invalid_extension`: Tests that a file with an invalid extension is correctly identified and returns an error.[/// - `test_validate_input_file_path_not_found`: Tests that a non-existent file path returns a not found error.
+///
+/// - `test_validate_input_file_path_valid`: Tests that a valid CSV file path is correctly validated.
+/// - `test_validate_input_file_path_invalid_extension`: Tests that a file with an invalid extension is correctly identified and returns an error.
+/// - `test_validate_input_file_path_not_found`: Tests that a non-existent file path returns a not found error.
 /// - `test_validate_output_dir_path_valid`: Tests that a valid directory path is correctly validated.
+/// - `test_validate_output_dir_path_create`: Tests that a new directory is created if it does not exist and is correctly validated.
+/// - `test_validate_output_dir_path_not_dir`: Tests that a file path is correctly identified as not being a directory and returns an error.
 #[derive(Debug, PartialEq, Eq, Clone, clap::Parser)]
 #[clap(author, version, about, long_about = None)]
 pub struct Args {
