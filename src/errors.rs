@@ -2,7 +2,7 @@ use std::{io::ErrorKind, path::PathBuf};
 
 use thiserror::Error;
 
-#[derive(Debug, Error)]
+#[derive(Debug, Error, PartialEq, Eq)]
 pub enum ValidationError {
     #[error("Path '{0}' is not a file")]
     PathIsNotFile(PathBuf),
@@ -98,3 +98,31 @@ impl From<(std::io::Error, PathBuf)> for CustomIoError {
         }
     }
 }
+
+impl PartialEq for CustomIoError {
+    fn eq(&self, other: &Self) -> bool {
+        use CustomIoError::*;
+        match (self, other) {
+            (NotFound { path: p1 }, NotFound { path: p2 }) => p1 == p2,
+            (PermissionDenied { path: p1 }, PermissionDenied { path: p2 }) => p1 == p2,
+            (ConnectionRefused, ConnectionRefused) => true,
+            (ConnectionReset, ConnectionReset) => true,
+            (ConnectionAborted, ConnectionAborted) => true,
+            (NotConnected, NotConnected) => true,
+            (AddrInUse, AddrInUse) => true,
+            (AddrNotAvailable, AddrNotAvailable) => true,
+            (BrokenPipe, BrokenPipe) => true,
+            (AlreadyExists { path: p1 }, AlreadyExists { path: p2 }) => p1 == p2,
+            (WouldBlock, WouldBlock) => true,
+            (InvalidInput, InvalidInput) => true,
+            (TimedOut, TimedOut) => true,
+            (WriteZero, WriteZero) => true,
+            (Interrupted, Interrupted) => true,
+            (UnexpectedEof, UnexpectedEof) => true,
+            (Other { source: s1 }, Other { source: s2 }) => s1.kind() == s2.kind(),
+            _ => false,
+        }
+    }
+}
+
+impl Eq for CustomIoError {}
