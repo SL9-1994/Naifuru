@@ -35,7 +35,7 @@ use crate::{
 ///
 /// # Tests
 ///
-/// - `test_validate_input_file_path_valid`: Tests that a valid CSV file path is correctly validated.
+/// - `test_validate_input_file_path_valid`: Tests that a valid file path is correctly validated.
 /// - `test_validate_input_file_path_invalid_extension`: Tests that a file with an invalid extension is correctly identified and returns an error.
 /// - `test_validate_input_file_path_not_found`: Tests that a non-existent file path returns a not found error.
 /// - `test_validate_output_dir_path_valid`: Tests that a valid directory path is correctly validated.
@@ -111,7 +111,7 @@ impl Args {
 
     fn validate_input_file_path<'src>(path: &'src str) -> Result<(), Vec<ValidationError>> {
         let mut errors: Vec<ValidationError> = Vec::new();
-        let valid_extensions: [&'src str; 1] = ["csv"];
+        let valid_extensions: [&'src str; 1] = ["toml"];
         let path = Path::new(path);
 
         Args::validate_path(path, true)?;
@@ -171,7 +171,7 @@ pub enum OutputFormat {
 ///
 /// # Tests
 ///
-/// - `test_validate_input_file_path_valid`: Tests that a valid CSV file path is correctly validated.
+/// - `test_validate_input_file_path_valid`: Tests that a valid file path is correctly validated.
 /// - `test_validate_input_file_path_invalid_extension`: Tests that a file with an invalid extension is correctly identified and returns an error.
 /// - `test_validate_input_file_path_not_found`: Tests that a non-existent file path returns a not found error.
 /// - `test_validate_output_dir_path_valid`: Tests that a valid directory path is correctly validated.
@@ -188,7 +188,7 @@ mod tests {
     #[test]
     fn test_validate_input_file_path_valid() {
         let dir = tempdir().unwrap();
-        let file_path = dir.path().join("test.csv");
+        let file_path = dir.path().join("test.toml");
         let mut file = File::create(&file_path).unwrap();
         writeln!(file, "test data").unwrap();
 
@@ -210,12 +210,12 @@ mod tests {
         let errors = result.unwrap_err();
         assert!(errors
             .iter()
-            .any(|e| *e == ValidationError::InvalidFileExt("txt".to_string(), "csv".to_string())));
+            .any(|e| *e == ValidationError::InvalidFileExt("txt".to_string(), "toml".to_string())));
     }
 
     #[test]
     fn test_validate_input_file_path_not_found() {
-        let result = Args::validate_input_file_path("non_existent.csv");
+        let result = Args::validate_input_file_path("non_existent.toml");
         assert!(
             result.is_err(),
             "Expected an error for non-existent file path"
@@ -249,7 +249,7 @@ mod tests {
     #[test]
     fn test_validate_output_dir_path_not_dir() {
         let dir = tempdir().unwrap();
-        let file_path = dir.path().join("test.csv");
+        let file_path = dir.path().join("test.toml");
         let mut file = File::create(&file_path).unwrap();
         writeln!(file, "test data").unwrap();
 
