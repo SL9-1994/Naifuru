@@ -11,6 +11,11 @@ pub enum LogLevel {
 }
 
 /// Converts the application's LogLevel to the standard log crate's LevelFilter.
+///
+/// # Mapping
+/// * Error -> LevelFilter::Error
+/// * Info  -> LevelFilter::Info
+/// * Debug -> LevelFilter::Debug
 impl From<LogLevel> for log::LevelFilter {
     fn from(level: LogLevel) -> Self {
         match level {
