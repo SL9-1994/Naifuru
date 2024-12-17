@@ -1,4 +1,7 @@
-use std::{fs, path::Path};
+use std::{
+    fs,
+    path::{Path, PathBuf},
+};
 
 use clap::{Parser, ValueHint};
 use log::warn;
@@ -20,10 +23,10 @@ use crate::{
 /// # Methods
 ///
 /// - `Args::new() -> Self`: Parses the command-line arguments and returns an instance of `Args`.
-/// - `Args::validate(&self) -> Result<(), ValidationError>`: Validates the input file path and output directory path.
-/// - `Args::validate_path(path: &Path, is_file: bool) -> Result<String, ValidationError>`: Validates a given path as either a file or directory.
-/// - `Args::validate_input_file_path<'src>(path: &'src str) -> Result<String, ValidationError>`: Validates the input file path ensuring it exists and has a valid extension.
-/// - `Args::validate_output_dir_path<'src>(path: &'src str) -> Result<String, ValidationError>`: Validates the output directory path ensuring it exists or creates it if it does not.
+/// - `Args::validate(&self) -> Result<(), CustomErrors>`: Validates the input file path and output directory path.
+/// - `Args::validate_path(path: &Path, is_file: bool) -> Result<(), Vec<ValidationError>>`: Validates a given path as either a file or directory.
+/// - `Args::validate_input_file_path(path: &Path) -> Result<(), Vec<ValidationError>>`: Validates the input file path ensuring it exists and has a valid extension.
+/// - `Args::validate_output_dir_path(path: &Path) -> Result<(), Vec<ValidationError>>`: Validates the output directory path ensuring it exists or creates it if it does not.
 ///
 /// # Enums
 ///
@@ -46,11 +49,11 @@ use crate::{
 pub struct Args {
     /// Path of the file describing the file to be converted.
     #[clap(short, long, value_hint = ValueHint::FilePath)]
-    pub input_file_path: String,
+    pub input_file_path: PathBuf,
 
     /// Path of the output directory of the converted file.
     #[clap(short, long, value_hint = ValueHint::DirPath)]
-    pub output_dir_path: String,
+    pub output_dir_path: PathBuf,
 
     /// Selection of output format (JMA, Stera3D)
     #[clap(short = 'f', long, value_enum, default_value_t = OutputFormat::Jma)]
@@ -108,9 +111,9 @@ impl Args {
         Ok(())
     }
 
-    fn validate_input_file_path<'src>(path: &'src str) -> Result<(), Vec<ValidationError>> {
+    fn validate_input_file_path(path: &Path) -> Result<(), Vec<ValidationError>> {
         let mut errors: Vec<ValidationError> = Vec::new();
-        let valid_extensions: [&'src str; 1] = ["toml"];
+        let valid_extensions: [&str; 1] = ["toml"];
         let path = Path::new(path);
 
         Args::validate_path(path, true)?;
@@ -135,7 +138,7 @@ impl Args {
         }
     }
 
-    fn validate_output_dir_path<'src>(path: &'src str) -> Result<(), Vec<ValidationError>> {
+    fn validate_output_dir_path<'src>(path: &Path) -> Result<(), Vec<ValidationError>> {
         let mut errors: Vec<ValidationError> = Vec::new();
         let path = Path::new(path);
 
@@ -191,7 +194,7 @@ mod tests {
         let mut file = File::create(&file_path).unwrap();
         writeln!(file, "test data").unwrap();
 
-        let result = Args::validate_input_file_path(file_path.to_str().unwrap());
+        let result = Args::validate_input_file_path(&file_path);
         assert!(result.is_ok());
         assert_eq!(result.unwrap(), ());
     }
@@ -203,7 +206,7 @@ mod tests {
         let mut file = File::create(&file_path).unwrap();
         writeln!(file, "test data").unwrap();
 
-        let result = Args::validate_input_file_path(file_path.to_str().unwrap());
+        let result = Args::validate_input_file_path(&file_path);
         assert!(result.is_err());
 
         let errors = result.unwrap_err();
@@ -214,7 +217,7 @@ mod tests {
 
     #[test]
     fn test_validate_input_file_path_not_found() {
-        let result = Args::validate_input_file_path("non_existent.toml");
+        let result = Args::validate_input_file_path(Path::new("non_existent.toml"));
         assert!(
             result.is_err(),
             "Expected an error for non-existent file path"
@@ -229,7 +232,7 @@ mod tests {
     #[test]
     fn test_validate_output_dir_path_valid() {
         let dir = tempdir().unwrap();
-        let result = Args::validate_output_dir_path(dir.path().to_str().unwrap());
+        let result = Args::validate_output_dir_path(dir.path());
         assert!(result.is_ok());
         assert_eq!(result.unwrap(), ());
     }
@@ -239,7 +242,7 @@ mod tests {
         let dir = tempdir().unwrap();
         let new_dir_path = dir.path().join("new_dir");
 
-        let result = Args::validate_output_dir_path(new_dir_path.to_str().unwrap());
+        let result = Args::validate_output_dir_path(new_dir_path.as_path());
         assert!(result.is_ok());
         assert!(new_dir_path.exists());
         assert_eq!(result.unwrap(), ());
@@ -252,7 +255,7 @@ mod tests {
         let mut file = File::create(&file_path).unwrap();
         writeln!(file, "test data").unwrap();
 
-        let result = Args::validate_output_dir_path(file_path.to_str().unwrap());
+        let result = Args::validate_output_dir_path(file_path.as_path());
         assert!(result.is_err());
 
         let errors = result.unwrap_err();
