@@ -61,13 +61,14 @@ impl Args {
     }
 
     pub fn validate(&self) -> Result<(), CustomErrors> {
-        let mut errors: Vec<ValidationError> = Vec::new();
-        if let Err(e) = Args::validate_input_file_path(&self.input_file_path) {
-            errors.extend(e);
-        };
-        if let Err(e) = Args::validate_output_dir_path(&self.output_dir_path) {
-            errors.extend(e);
-        };
+        let errors: Vec<ValidationError> = [
+            Args::validate_input_file_path(&self.input_file_path),
+            Args::validate_output_dir_path(&self.output_dir_path),
+        ]
+        .into_iter()
+        .filter_map(Result::err)
+        .flatten()
+        .collect();
 
         if errors.is_empty() {
             Ok(())
@@ -79,27 +80,21 @@ impl Args {
     fn validate_path(path: &Path, is_file: bool) -> Result<(), Vec<ValidationError>> {
         let mut errors: Vec<ValidationError> = Vec::new();
 
-        if is_file && !path.exists() {
+        if !path.exists() && is_file {
             errors.push(ValidationError::Io(CustomIoError::NotFound {
                 path: path.to_path_buf(),
             }));
+        } else if is_file && !path.is_file() {
+            errors.push(ValidationError::PathIsNotFile(path.to_path_buf()));
+        } else if !is_file && !path.is_dir() {
+            errors.push(ValidationError::PathIsNotDir(path.to_path_buf()));
+        }
+
+        if errors.is_empty() {
+            Ok(())
         } else {
-            // validate_input_file_path
-            if is_file && !path.is_file() {
-                errors.push(ValidationError::PathIsNotFile(path.to_path_buf()));
-            }
-
-            // validate_output_dir_path
-            if !is_file && !path.is_dir() {
-                errors.push(ValidationError::PathIsNotDir(path.to_path_buf()));
-            }
+            Err(errors)
         }
-
-        if !errors.is_empty() {
-            return Err(errors);
-        }
-
-        Ok(())
     }
 
     fn validate_input_file_path(path: &Path) -> Result<(), Vec<ValidationError>> {
