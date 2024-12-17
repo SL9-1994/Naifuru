@@ -18,7 +18,6 @@ use crate::{
 /// # Structs
 ///
 /// - `Args`: Represents the command-line arguments and provides methods for parsing and validation.
-/// - `OutputFormat`: Enum representing the possible output formats.
 ///
 /// # Methods
 ///
@@ -27,10 +26,6 @@ use crate::{
 /// - `Args::validate_path(path: &Path, is_file: bool) -> Result<(), Vec<ValidationError>>`: Validates a given path as either a file or directory.
 /// - `Args::validate_input_file_path(path: &Path) -> Result<(), Vec<ValidationError>>`: Validates the input file path ensuring it exists and has a valid extension.
 /// - `Args::validate_output_dir_path(path: &Path) -> Result<(), Vec<ValidationError>>`: Validates the output directory path ensuring it exists or creates it if it does not.
-///
-/// # Enums
-///
-/// - `OutputFormat`: Enum representing the possible output formats (Stera3d, Jma).
 ///
 /// # Errors
 ///
@@ -54,10 +49,6 @@ pub struct Args {
     /// Path of the output directory of the converted file.
     #[clap(short, long, value_hint = ValueHint::DirPath)]
     pub output_dir_path: PathBuf,
-
-    /// Selection of output format (JMA, Stera3D)
-    #[clap(short = 'f', long, value_enum, default_value_t = OutputFormat::Jma)]
-    pub output_format: OutputFormat,
 
     /// Sets the logging level
     #[clap(short, long, value_enum, default_value_t = LogLevel::Info)]
@@ -161,12 +152,6 @@ impl Args {
 
         Ok(())
     }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, clap::ValueEnum)]
-pub enum OutputFormat {
-    Stera3d,
-    Jma,
 }
 
 /// This module contains unit tests for the `Args` struct's validation methods.
