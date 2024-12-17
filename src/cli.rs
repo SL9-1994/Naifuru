@@ -1,7 +1,7 @@
 use std::{fs, path::Path};
 
 use clap::{Parser, ValueHint};
-use log::info;
+use log::warn;
 
 use crate::{
     errors::{CustomErrors, CustomIoError, ValidationError},
@@ -85,18 +85,21 @@ impl Args {
     fn validate_path(path: &Path, is_file: bool) -> Result<(), Vec<ValidationError>> {
         let mut errors: Vec<ValidationError> = Vec::new();
 
-        if !path.exists() {
+        if is_file && !path.exists() {
             errors.push(ValidationError::Io(CustomIoError::NotFound {
                 path: path.to_path_buf(),
             }));
-        }
+        } else {
+            // validate_input_file_path
+            if is_file && !path.is_file() {
+                println!("validate_input_file_path");
+                errors.push(ValidationError::PathIsNotFile(path.to_path_buf()));
+            }
 
-        if is_file && !path.is_file() {
-            errors.push(ValidationError::PathIsNotFile(path.to_path_buf()));
-        }
-
-        if !is_file && !path.is_dir() {
-            errors.push(ValidationError::PathIsNotDir(path.to_path_buf()));
+            // validate_output_dir_path
+            if !is_file && !path.is_dir() {
+                errors.push(ValidationError::PathIsNotDir(path.to_path_buf()));
+            }
         }
 
         if !errors.is_empty() {
@@ -121,7 +124,7 @@ impl Args {
                 } else {
                     errors.push(ValidationError::InvalidFileExt(
                         ext,
-                        valid_extensions[0].to_string(),
+                        valid_extensions.join(", "),
                     ));
                     Err(errors)
                 }
@@ -143,10 +146,12 @@ impl Args {
             {
                 errors.push(e);
             }
-            info!("{:?} did not exist, so the directory was created.", path);
+            warn!("{:?} did not exist, so the directory was created.", path);
         }
 
-        Args::validate_path(path, false)?;
+        if let Err(e) = Args::validate_path(path, false) {
+            errors.extend(e);
+        }
 
         if !errors.is_empty() {
             return Err(errors);
@@ -211,7 +216,10 @@ mod tests {
     #[test]
     fn test_validate_input_file_path_not_found() {
         let result = Args::validate_input_file_path("non_existent.csv");
-        assert!(result.is_err());
+        assert!(
+            result.is_err(),
+            "Expected an error for non-existent file path"
+        );
 
         let errors = result.unwrap_err();
         assert!(errors
