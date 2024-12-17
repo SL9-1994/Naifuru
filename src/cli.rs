@@ -92,7 +92,6 @@ impl Args {
         } else {
             // validate_input_file_path
             if is_file && !path.is_file() {
-                println!("validate_input_file_path");
                 errors.push(ValidationError::PathIsNotFile(path.to_path_buf()));
             }
 
