@@ -179,6 +179,7 @@ pub enum OutputFormat {
 /// - `test_validate_output_dir_path_valid`: Tests that a valid directory path is correctly validated.
 /// - `test_validate_output_dir_path_create`: Tests that a new directory is created if it does not exist and is correctly validated.
 /// - `test_validate_output_dir_path_not_dir`: Tests that a file path is correctly identified as not being a directory and returns an error.
+/// - `test_validate_input_file_path_special_chars`: Validation of input file paths containing special characters.
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -262,5 +263,16 @@ mod tests {
         assert!(errors
             .iter()
             .any(|e| matches!(e, ValidationError::PathIsNotDir(_))));
+    }
+
+    #[test]
+    fn test_validate_input_file_path_special_chars() {
+        let dir = tempdir().unwrap();
+        let file_path = dir.path().join("test with spaces.toml");
+        let mut file = File::create(&file_path).unwrap();
+        writeln!(file, "test data").unwrap();
+
+        let result = Args::validate_input_file_path(file_path.as_path());
+        assert!(result.is_ok());
     }
 }
