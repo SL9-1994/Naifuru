@@ -3,7 +3,7 @@ use std::io::Write;
 
 /// Represents available logging levels for the application.
 /// Used for configuring the logging verbosity through CLI arguments.
-#[derive(Debug, Clone, clap::ValueEnum, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, clap::ValueEnum, PartialEq, Eq)]
 pub enum LogLevel {
     Error,
     Info,
@@ -37,8 +37,8 @@ pub fn init_logger(log_level: LevelFilter) -> Result<(), log::SetLoggerError> {
                 Level::Error => "\x1b[31mERROR\x1b[0m", // red
                 Level::Info => "\x1b[32mINFO\x1b[0m",   // green
                 Level::Debug => "\x1b[34mDEBUG\x1b[0m", // blue
-                Level::Warn => unreachable!(),
-                Level::Trace => unreachable!(),
+                Level::Warn => "\x1b[33mWARN\x1b[0m",   // yellow
+                Level::Trace => "\x1b[35mTRACE\x1b[0m", // magenta
             };
             writeln!(buf, "{}: {}", level, record.args())
         })
