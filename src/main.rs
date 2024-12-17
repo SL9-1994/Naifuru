@@ -1,11 +1,11 @@
-use anyhow::{Ok, Result};
+use anyhow::Result;
 use log::debug;
 use naifuru::{cli::Args, exit_on_error, logging::init_logger};
 
 fn main() -> Result<()> {
     let args = Args::new();
 
-    init_logger(args.log_level.clone().into())?;
+    init_logger(args.log_level.into())?;
     debug!("The loglevel has been set.");
 
     if let Err(e) = args.validate() {
