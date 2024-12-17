@@ -1,10 +1,10 @@
 use std::{fs, path::Path};
 
 use clap::{Parser, ValueHint};
-use log::{debug, info};
+use log::info;
 
 use crate::{
-    errors::{CustomIoError, ValidationError},
+    errors::{CustomErrors, CustomIoError, ValidationError},
     logging::LogLevel,
 };
 
@@ -66,35 +66,48 @@ impl Args {
         Args::parse()
     }
 
-    pub fn validate(&self) -> Result<(), ValidationError> {
-        let validate_input = Args::validate_input_file_path(&self.input_file_path)?;
-        let validate_output = Args::validate_output_dir_path(&self.output_dir_path)?;
+    pub fn validate(&self) -> Result<(), CustomErrors> {
+        let mut errors: Vec<ValidationError> = Vec::new();
+        if let Err(e) = Args::validate_input_file_path(&self.input_file_path) {
+            errors.extend(e);
+        };
+        if let Err(e) = Args::validate_output_dir_path(&self.output_dir_path) {
+            errors.extend(e);
+        };
 
-        info!("Input file validated: {}", validate_input);
-        info!("Output directory validated: {}", validate_output);
-
-        Ok(())
+        if errors.is_empty() {
+            Ok(())
+        } else {
+            Err(errors.into())
+        }
     }
 
-    fn validate_path(path: &Path, is_file: bool) -> Result<String, ValidationError> {
+    fn validate_path(path: &Path, is_file: bool) -> Result<(), Vec<ValidationError>> {
+        let mut errors: Vec<ValidationError> = Vec::new();
+
         if !path.exists() {
-            return Err(ValidationError::Io(CustomIoError::NotFound {
+            errors.push(ValidationError::Io(CustomIoError::NotFound {
                 path: path.to_path_buf(),
             }));
         }
 
         if is_file && !path.is_file() {
-            return Err(ValidationError::PathIsNotFile(path.to_path_buf()));
+            errors.push(ValidationError::PathIsNotFile(path.to_path_buf()));
         }
 
         if !is_file && !path.is_dir() {
-            return Err(ValidationError::PathIsNotDir(path.to_path_buf()));
+            errors.push(ValidationError::PathIsNotDir(path.to_path_buf()));
         }
 
-        Ok(path.to_string_lossy().to_string())
+        if !errors.is_empty() {
+            return Err(errors);
+        }
+
+        Ok(())
     }
 
-    fn validate_input_file_path<'src>(path: &'src str) -> Result<String, ValidationError> {
+    fn validate_input_file_path<'src>(path: &'src str) -> Result<(), Vec<ValidationError>> {
+        let mut errors: Vec<ValidationError> = Vec::new();
         let valid_extensions: [&'src str; 1] = ["csv"];
         let path = Path::new(path);
 
@@ -104,29 +117,42 @@ impl Args {
             Some(ext) => {
                 let ext = ext.to_string_lossy().to_lowercase();
                 if valid_extensions.contains(&ext.as_str()) {
-                    debug!("fn validate_input_file_path is Successful");
-                    Ok(path.to_string_lossy().to_string())
+                    Ok(())
                 } else {
-                    Err(ValidationError::InvalidFileExt(
+                    errors.push(ValidationError::InvalidFileExt(
                         ext,
                         valid_extensions[0].to_string(),
-                    ))
+                    ));
+                    Err(errors)
                 }
             }
-            None => Err(ValidationError::ExtNotFound),
+            None => {
+                errors.push(ValidationError::ExtNotFound);
+                Err(errors)
+            }
         }
     }
 
-    fn validate_output_dir_path<'src>(path: &'src str) -> Result<String, ValidationError> {
+    fn validate_output_dir_path<'src>(path: &'src str) -> Result<(), Vec<ValidationError>> {
+        let mut errors: Vec<ValidationError> = Vec::new();
         let path = Path::new(path);
 
         if !path.exists() {
-            fs::create_dir_all(path)
-                .map_err(|e| ValidationError::Io(CustomIoError::from((e, path.to_path_buf()))))?;
+            if let Err(e) = fs::create_dir_all(path)
+                .map_err(|e| ValidationError::Io(CustomIoError::from((e, path.to_path_buf()))))
+            {
+                errors.push(e);
+            }
             info!("{:?} did not exist, so the directory was created.", path);
         }
 
-        Args::validate_path(path, false)
+        Args::validate_path(path, false)?;
+
+        if !errors.is_empty() {
+            return Err(errors);
+        }
+
+        Ok(())
     }
 }
 
@@ -163,7 +189,7 @@ mod tests {
 
         let result = Args::validate_input_file_path(file_path.to_str().unwrap());
         assert!(result.is_ok());
-        assert_eq!(result.unwrap(), file_path.to_string_lossy().to_string());
+        assert_eq!(result.unwrap(), ());
     }
 
     #[test]
@@ -175,20 +201,22 @@ mod tests {
 
         let result = Args::validate_input_file_path(file_path.to_str().unwrap());
         assert!(result.is_err());
-        assert_eq!(
-            result.unwrap_err(),
-            ValidationError::InvalidFileExt("txt".to_string(), "csv".to_string())
-        );
+
+        let errors = result.unwrap_err();
+        assert!(errors
+            .iter()
+            .any(|e| *e == ValidationError::InvalidFileExt("txt".to_string(), "csv".to_string())));
     }
 
     #[test]
     fn test_validate_input_file_path_not_found() {
         let result = Args::validate_input_file_path("non_existent.csv");
         assert!(result.is_err());
-        assert!(matches!(
-            result.unwrap_err(),
-            ValidationError::Io(CustomIoError::NotFound { .. })
-        ));
+
+        let errors = result.unwrap_err();
+        assert!(errors
+            .iter()
+            .any(|e| matches!(e, ValidationError::Io(CustomIoError::NotFound { .. }))));
     }
 
     #[test]
@@ -196,7 +224,7 @@ mod tests {
         let dir = tempdir().unwrap();
         let result = Args::validate_output_dir_path(dir.path().to_str().unwrap());
         assert!(result.is_ok());
-        assert_eq!(result.unwrap(), dir.path().to_string_lossy().to_string());
+        assert_eq!(result.unwrap(), ());
     }
 
     #[test]
@@ -207,7 +235,7 @@ mod tests {
         let result = Args::validate_output_dir_path(new_dir_path.to_str().unwrap());
         assert!(result.is_ok());
         assert!(new_dir_path.exists());
-        assert_eq!(result.unwrap(), new_dir_path.to_string_lossy().to_string());
+        assert_eq!(result.unwrap(), ());
     }
 
     #[test]
@@ -219,9 +247,10 @@ mod tests {
 
         let result = Args::validate_output_dir_path(file_path.to_str().unwrap());
         assert!(result.is_err());
-        assert!(matches!(
-            result.unwrap_err(),
-            ValidationError::PathIsNotDir { .. }
-        ));
+
+        let errors = result.unwrap_err();
+        assert!(errors
+            .iter()
+            .any(|e| matches!(e, ValidationError::PathIsNotDir(_))));
     }
 }
