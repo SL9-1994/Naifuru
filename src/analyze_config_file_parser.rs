@@ -1,6 +1,8 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, fs, path::Path};
 
 use serde::{Deserialize, Serialize};
+
+use crate::errors::{ConfigParseError, CustomIoError};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Conversion {
@@ -39,6 +41,19 @@ pub struct GlobalSettings {
 }
 
 impl Config {
+    pub fn read_config_from_input_file(
+        &self,
+        input_file_path: &Path,
+    ) -> Result<String, ConfigParseError> {
+        match fs::read_to_string(input_file_path) {
+            Ok(content) => Ok(content),
+            Err(e) => Err(ConfigParseError::Io(CustomIoError::from((
+                e,
+                input_file_path.to_path_buf(),
+            )))),
+        }
+    }
+
     /// Groups the `Group` objects within each `Conversion` by their `g_key` value.
     pub fn group_by_key(&self) -> Vec<Vec<&Group>> {
         let mut result: Vec<Vec<&Group>> = Vec::new();
