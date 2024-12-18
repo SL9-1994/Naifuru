@@ -1,4 +1,4 @@
+pub mod analyze_config_file_parser;
 pub mod cli;
-pub mod config_file_parser;
 pub mod errors;
 pub mod logging;
