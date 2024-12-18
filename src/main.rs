@@ -1,7 +1,7 @@
 use anyhow::Result;
 use log::debug;
 use naifuru::{
-    analyze_config_file_parser::{read_config_from_input_file, Config, Group},
+    analysis_config_file_parser::{read_config_from_input_file, Config, Group},
     cli::Args,
     errors::{ConfigParseError, CustomErrors},
     exit_on_error,
