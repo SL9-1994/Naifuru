@@ -14,12 +14,14 @@ macro_rules! exit_on_error {
 #[derive(Debug, PartialEq, Eq)]
 pub enum CustomErrors {
     ValidationError(Vec<ValidationError>),
+    ConfigParseError(Vec<ConfigParseError>),
 }
 
 impl CustomErrors {
     pub fn exit_code(&self) -> i32 {
         match self {
             CustomErrors::ValidationError(_) => 2,
+            CustomErrors::ConfigParseError(_) => 3,
         }
     }
 
@@ -30,6 +32,11 @@ impl CustomErrors {
                     error!("{}. ValidationError: {}", index + 1, error);
                 }
             }
+            CustomErrors::ConfigParseError(errors) => {
+                for (index, error) in errors.iter().enumerate() {
+                    error!("{}. ConfigFileError: {}", index + 1, error);
+                }
+            }
         }
     }
 }
@@ -37,6 +44,12 @@ impl CustomErrors {
 impl From<Vec<ValidationError>> for CustomErrors {
     fn from(errors: Vec<ValidationError>) -> Self {
         CustomErrors::ValidationError(errors)
+    }
+}
+
+impl From<Vec<ConfigParseError>> for CustomErrors {
+    fn from(errors: Vec<ConfigParseError>) -> Self {
+        CustomErrors::ConfigParseError(errors)
     }
 }
 
@@ -53,6 +66,18 @@ pub enum ValidationError {
 
     #[error("No file extension found")]
     ExtNotFound,
+
+    #[error("I/O error occurred: {0}")]
+    Io(#[from] CustomIoError),
+}
+
+#[derive(Debug, Error, PartialEq, Eq)]
+pub enum ConfigParseError {
+    #[error("Config file '{0}' has the wrong structure.")]
+    MismatchFileStructure(PathBuf),
+
+    #[error("Failed to parse: '{0}'")]
+    FailedToParse(String),
 
     #[error("I/O error occurred: {0}")]
     Io(#[from] CustomIoError),
