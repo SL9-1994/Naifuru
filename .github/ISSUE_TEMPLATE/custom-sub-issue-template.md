@@ -1,7 +1,7 @@
 ---
 name: Custom sub issue template
 about: Custom sub issue temp
-title: "[Feat][sub]: "
+title: "[sub]: "
 labels: ''
 assignees: ''
 
