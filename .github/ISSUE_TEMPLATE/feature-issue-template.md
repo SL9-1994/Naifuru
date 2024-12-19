@@ -1,7 +1,7 @@
 ---
 name: Feature issue template
 about: Feature issue temp
-title: "[Feat]: Title"
+title: ''
 labels: ''
 assignees: ''
 
