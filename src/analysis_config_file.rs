@@ -1,22 +1,26 @@
-use std::{collections::HashMap, fs, path::Path};
+use std::{
+    collections::HashMap,
+    fs,
+    path::{Path, PathBuf},
+};
 
 use serde::{Deserialize, Serialize};
 
-use crate::errors::{ConfigParseError, CustomIoError};
+use crate::errors::{AnalysisConfigError, CustomIoError};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Conversion {
     /// Before conversion
-    from: ConversionFrom,
+    from: From,
     /// After conversion
-    to: ConversionTo,
+    to: To,
     /// File configuration groups
     groups: Vec<Group>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
-pub enum ConversionFrom {
+pub enum From {
     JpNiedKnet,
     UsScsnV2,
     NzGeonetV1a,
@@ -27,18 +31,26 @@ pub enum ConversionFrom {
 
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
-pub enum ConversionTo {
+pub enum To {
     JpJmaCsv,
     JpStera3dTxt,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Group {
-    pub path: String,
+    pub path: PathBuf,
     /// direction component identifier(ns, ew, ud)
-    pub component: Option<String>,
+    pub direction: Option<AccDirection>,
     /// identifier key for grouping
     pub g_key: Option<u32>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum AccDirection {
+    Ns,
+    Ew,
+    Ud,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -75,10 +87,10 @@ pub enum NameFormat {
 
 pub fn read_config_from_input_file(
     input_file_path: &Path,
-) -> Result<String, Vec<ConfigParseError>> {
+) -> Result<String, Vec<AnalysisConfigError>> {
     match fs::read_to_string(input_file_path) {
         Ok(content) => Ok(content),
-        Err(e) => Err(vec![ConfigParseError::Io(CustomIoError::from((
+        Err(e) => Err(vec![AnalysisConfigError::Io(CustomIoError::from((
             e,
             input_file_path.to_path_buf(),
         )))]),
