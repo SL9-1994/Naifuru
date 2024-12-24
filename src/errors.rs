@@ -14,14 +14,14 @@ macro_rules! exit_on_error {
 #[derive(Debug, PartialEq, Eq)]
 pub enum CustomErrors {
     ValidationError(Vec<ValidationError>),
-    ConfigParseError(Vec<ConfigParseError>),
+    AnalysisConfigError(Vec<AnalysisConfigError>),
 }
 
 impl CustomErrors {
     pub fn exit_code(&self) -> i32 {
         match self {
             CustomErrors::ValidationError(_) => 2,
-            CustomErrors::ConfigParseError(_) => 3,
+            CustomErrors::AnalysisConfigError(_) => 3,
         }
     }
 
@@ -32,7 +32,7 @@ impl CustomErrors {
                     error!("{}. ValidationError: {}", index + 1, error);
                 }
             }
-            CustomErrors::ConfigParseError(errors) => {
+            CustomErrors::AnalysisConfigError(errors) => {
                 for (index, error) in errors.iter().enumerate() {
                     error!("{}. ConfigFileError: {}", index + 1, error);
                 }
@@ -47,9 +47,9 @@ impl From<Vec<ValidationError>> for CustomErrors {
     }
 }
 
-impl From<Vec<ConfigParseError>> for CustomErrors {
-    fn from(errors: Vec<ConfigParseError>) -> Self {
-        CustomErrors::ConfigParseError(errors)
+impl From<Vec<AnalysisConfigError>> for CustomErrors {
+    fn from(errors: Vec<AnalysisConfigError>) -> Self {
+        CustomErrors::AnalysisConfigError(errors)
     }
 }
 
@@ -72,7 +72,7 @@ pub enum ValidationError {
 }
 
 #[derive(Debug, Error, PartialEq, Eq)]
-pub enum ConfigParseError {
+pub enum AnalysisConfigError {
     #[error("Config file '{0}' has the wrong structure.")]
     MismatchFileStructure(PathBuf),
 
