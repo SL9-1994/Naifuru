@@ -4,9 +4,12 @@ use std::{
     path::{Path, PathBuf},
 };
 
+use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
 
-use crate::errors::{AnalysisConfigError, CustomIoError};
+use crate::error::{ErrorContext, Module};
+
+const ERROR_MODULE: Module = Module::ConfigFileAnalysis;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Conversion {
@@ -85,24 +88,18 @@ pub enum NameFormat {
     YyyymmddHhmmssSnN,
 }
 
-pub fn read_config_from_input_file(
-    input_file_path: &Path,
-) -> Result<String, Vec<AnalysisConfigError>> {
-    match fs::read_to_string(input_file_path) {
-        Ok(content) => Ok(content),
-        Err(e) => Err(vec![AnalysisConfigError::Io(CustomIoError::from((
-            e,
-            input_file_path.to_path_buf(),
-        )))]),
-    }
+pub fn read_config_from_input_file(input_file_path: &Path) -> Result<String> {
+    fs::read_to_string(input_file_path).with_context(|| ErrorContext {
+        message: format!("Failed to read config file: {}", input_file_path.display()),
+        module: ERROR_MODULE,
+    })
 }
 
 impl Config {
-    /// Groups the `Group` objects within each `Conversion` by their `g_key` value.
-    pub fn group_by_key(&self) -> Vec<Vec<&Group>> {
+    pub fn group_by_key(&self) -> Result<Vec<Vec<&Group>>> {
         let mut result: Vec<Vec<&Group>> = Vec::new();
 
-        for conversion in &self.conversions {
+        for (i, conversion) in self.conversions.iter().enumerate() {
             let mut grouped: HashMap<Option<u32>, Vec<&Group>> = HashMap::new();
 
             // Grouping by g_key
@@ -111,11 +108,24 @@ impl Config {
             }
 
             // Groups with g_key of None are handled individually
-            for (_, groups) in grouped {
+            for (key, groups) in grouped {
+                if groups.is_empty() {
+                    return Err(anyhow::anyhow!(ErrorContext {
+                        message: format!("Empty group found for key {:?} in conversion {}", key, i),
+                        module: ERROR_MODULE,
+                    }));
+                }
                 result.push(groups);
             }
         }
 
-        result
+        if result.is_empty() {
+            return Err(anyhow::anyhow!(ErrorContext {
+                message: "No valid groups found in configuration".to_string(),
+                module: ERROR_MODULE,
+            }));
+        }
+
+        Ok(result)
     }
 }

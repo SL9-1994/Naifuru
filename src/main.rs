@@ -1,53 +1,49 @@
-use anyhow::Result;
-use log::debug;
+use std::fs;
+
+use anyhow::{Context, Result};
+use log::{debug, error};
 use naifuru::{
-    analysis_config_file::{read_config_from_input_file, Config},
-    cli::Args,
-    errors::{AnalysisConfigError, CustomErrors},
-    exit_on_error,
+    analysis_config_file::Config, bail_on_error, cli::Args, error::ErrorContext,
     logging::init_logger,
 };
 
-fn main() -> Result<()> {
+const DEFAULT_ERROR_EXIT_CODE: i32 = 1;
+
+fn main() {
+    if let Err(e) = run() {
+        error!("{e:?}");
+
+        if let Some(error_context) = e.downcast_ref::<ErrorContext>() {
+            bail_on_error!(error_context.module.exit_code());
+        }
+
+        // If ErrorContext cannot be obtained, exit with default error code 1
+        bail_on_error!(DEFAULT_ERROR_EXIT_CODE);
+    }
+}
+
+fn run() -> Result<()> {
     let args = Args::new();
 
     init_logger(args.log_level.into())?;
     debug!("The loglevel has been set.");
 
-    if let Err(e) = args.validate() {
-        let e_code = e.exit_code();
-        e.log_errors();
-        exit_on_error!(e_code);
-    };
+    args.validate()?;
     debug!("Validation check completed.");
 
-    let config_toml_str = match read_config_from_input_file(&args.input_file_path) {
-        Ok(config) => config,
-        Err(e) => {
-            let err: CustomErrors = CustomErrors::from(e);
-            let e_code = err.exit_code();
-            err.log_errors();
-            exit_on_error!(e_code);
-        }
-    };
+    let config_toml_str = fs::read_to_string(&args.input_file_path).with_context(|| {
+        format!(
+            "Failed to read config file: {}",
+            args.input_file_path.display()
+        )
+    })?;
     debug!("Analysis configuration file loading is complete.");
 
-    let config: Result<Config, CustomErrors> = toml::de::from_str(config_toml_str.as_str())
-        .map_err(|e| {
-            CustomErrors::AnalysisConfigError(vec![AnalysisConfigError::FailedToParse(
-                e.to_string(),
-            )])
-        });
-
-    let _config = match config {
-        Ok(config) => config,
-        Err(e) => {
-            let e_code = e.exit_code();
-            e.log_errors();
-            exit_on_error!(e_code);
-        }
-    };
+    let config: Config =
+        toml::from_str(&config_toml_str).with_context(|| "Failed to parse TOML configuration")?;
     debug!("Analysis configuration file parsing is complete.");
+
+    print!("{config:#?}");
 
     Ok(())
 }
