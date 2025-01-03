@@ -11,8 +11,6 @@ assignees: ''
 
 ## タスク
 
-## Implementation Details  
-
 ## 関連するissue
 - Parent Issue: #1
 
