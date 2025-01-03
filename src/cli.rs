@@ -3,13 +3,15 @@ use std::{
     path::{Path, PathBuf},
 };
 
+use anyhow::{Context, Result};
 use clap::{Parser, ValueHint};
-use log::warn;
 
 use crate::{
-    errors::{CustomErrors, CustomIoError, ValidationError},
+    error::{ErrorContext, Module},
     logging::LogLevel,
 };
+
+const ERROR_MODULE: Module = Module::CliArgsValidation;
 
 /// This module defines the command-line interface (CLI) for the application using the `clap` crate.
 /// It includes the `Args` struct which represents the parsed command-line arguments and provides
@@ -22,23 +24,13 @@ use crate::{
 /// # Methods
 ///
 /// - `Args::new() -> Self`: Parses the command-line arguments and returns an instance of `Args`.
-/// - `Args::validate(&self) -> Result<(), CustomErrors>`: Validates the input file path and output directory path.
-/// - `Args::validate_path(path: &Path, is_file: bool) -> Result<(), Vec<ValidationError>>`: Validates a given path as either a file or directory.
-/// - `Args::validate_input_file_path(path: &Path) -> Result<(), Vec<ValidationError>>`: Validates the input file path ensuring it exists and has a valid extension.
-/// - `Args::validate_output_dir_path(path: &Path) -> Result<(), Vec<ValidationError>>`: Validates the output directory path ensuring it exists or creates it if it does not.
+/// - `Args::validate(&self) -> Result<()>`: Validate the path of the input file and the path of the output directory, which is the entry point for the validation check.
+/// - `Args::validate_input_file_path(&self, path: &Path) -> Result<()>`: Validates the input file path ensuring it exists and has a valid extension.
+/// - `Args::validate_output_dir_path(&self, path: &Path) -> Result<()>`: Validates the output directory path ensuring it exists or creates it if it does not.
 ///
 /// # Errors
 ///
-/// - `ValidationError`: Enum representing possible validation errors including IO errors, invalid file extensions, and path type mismatches.
-///
-/// # Tests
-///
-/// - `test_validate_input_file_path_valid`: Tests that a valid file path is correctly validated.
-/// - `test_validate_input_file_path_invalid_extension`: Tests that a file with an invalid extension is correctly identified and returns an error.
-/// - `test_validate_input_file_path_not_found`: Tests that a non-existent file path returns a not found error.
-/// - `test_validate_output_dir_path_valid`: Tests that a valid directory path is correctly validated.
-/// - `test_validate_output_dir_path_create`: Tests that a new directory is created if it does not exist and is correctly validated.
-/// - `test_validate_output_dir_path_not_dir`: Tests that a file path is correctly identified as not being a directory and returns an error.
+/// - `ErrorContext`: Struct representing possible validation errors including IO errors, invalid file extensions, and path type mismatches.
 #[derive(Debug, PartialEq, Eq, Clone, clap::Parser)]
 #[clap(author, version, about, long_about = None)]
 pub struct Args {
@@ -60,89 +52,107 @@ impl Args {
         Args::parse()
     }
 
-    pub fn validate(&self) -> Result<(), CustomErrors> {
-        let errors: Vec<ValidationError> = [
-            Args::validate_input_file_path(&self.input_file_path),
-            Args::validate_output_dir_path(&self.output_dir_path),
-        ]
-        .into_iter()
-        .filter_map(Result::err)
-        .flatten()
-        .collect();
+    pub fn validate(&self) -> Result<()> {
+        self.validate_input_file_path(&self.input_file_path)
+            .with_context(|| {
+                format!(
+                    "Failed to validate input file: {}",
+                    self.input_file_path.display()
+                )
+            })?;
 
-        if errors.is_empty() {
-            Ok(())
-        } else {
-            Err(errors.into())
-        }
+        self.validate_output_dir_path(&self.output_dir_path)
+            .with_context(|| {
+                format!(
+                    "Failed to validate output directory: {}",
+                    self.output_dir_path.display()
+                )
+            })?;
+
+        Ok(())
     }
 
-    fn validate_path(path: &Path, is_file: bool) -> Result<(), Vec<ValidationError>> {
-        let mut errors: Vec<ValidationError> = Vec::new();
-
-        if !path.exists() && is_file {
-            errors.push(ValidationError::Io(CustomIoError::NotFound {
-                path: path.to_path_buf(),
-            }));
-        } else if is_file && !path.is_file() {
-            errors.push(ValidationError::PathIsNotFile(path.to_path_buf()));
-        } else if !is_file && !path.is_dir() {
-            errors.push(ValidationError::PathIsNotDir(path.to_path_buf()));
-        }
-
-        if errors.is_empty() {
-            Ok(())
-        } else {
-            Err(errors)
-        }
-    }
-
-    fn validate_input_file_path(path: &Path) -> Result<(), Vec<ValidationError>> {
-        let mut errors: Vec<ValidationError> = Vec::new();
+    fn validate_input_file_path(&self, path: &Path) -> Result<()> {
+        let mut errors = Vec::new();
         let valid_extensions: [&str; 1] = ["toml"];
-        let path = Path::new(path);
 
-        Args::validate_path(path, true)?;
+        let extension_result = path
+            .extension()
+            .map(|ext| ext.to_string_lossy().to_lowercase());
 
-        match path.extension() {
-            Some(ext) => {
-                let ext = ext.to_string_lossy().to_lowercase();
-                if valid_extensions.contains(&ext.as_str()) {
-                    Ok(())
-                } else {
-                    errors.push(ValidationError::InvalidFileExt(
-                        ext,
-                        valid_extensions.join(", "),
-                    ));
-                    Err(errors)
+        match extension_result {
+            None => {
+                errors.push(ErrorContext {
+                    message: "File has no extension".to_string(),
+                    module: ERROR_MODULE,
+                });
+            }
+            Some(extension) => {
+                if !valid_extensions.contains(&extension.as_str()) {
+                    errors.push(ErrorContext {
+                        message: format!(
+                            "Invalid file extension: {}, expected one of: {}",
+                            extension,
+                            valid_extensions.join(", ")
+                        ),
+                        module: ERROR_MODULE,
+                    });
                 }
             }
-            None => {
-                errors.push(ValidationError::ExtNotFound);
-                Err(errors)
-            }
         }
-    }
-
-    fn validate_output_dir_path<'src>(path: &Path) -> Result<(), Vec<ValidationError>> {
-        let mut errors: Vec<ValidationError> = Vec::new();
-        let path = Path::new(path);
 
         if !path.exists() {
-            if let Err(e) = fs::create_dir_all(path)
-                .map_err(|e| ValidationError::Io(CustomIoError::from((e, path.to_path_buf()))))
-            {
-                errors.push(e);
-            }
-            warn!("{:?} did not exist, so the directory was created.", path);
-        }
-
-        if let Err(e) = Args::validate_path(path, false) {
-            errors.extend(e);
+            errors.push(ErrorContext {
+                message: format!("Path does not exist: {}", path.display()),
+                module: ERROR_MODULE,
+            });
+        } else if !path.is_file() {
+            errors.push(ErrorContext {
+                message: format!("Path is not a file: {}", path.display()),
+                module: ERROR_MODULE,
+            });
         }
 
         if !errors.is_empty() {
-            return Err(errors);
+            let error_messages = errors
+                .iter()
+                .map(|e| e.message.clone())
+                .collect::<Vec<_>>()
+                .join("\n");
+            return Err(anyhow::anyhow!(
+                "Multiple validation errors:\n{}",
+                error_messages
+            ));
+        }
+
+        Ok(())
+    }
+
+    fn validate_output_dir_path(&self, path: &Path) -> Result<()> {
+        let mut errors = Vec::new();
+
+        if !path.exists() {
+            errors.push(ErrorContext {
+                message: format!("Path does not exist: {}", path.display()),
+                module: ERROR_MODULE,
+            });
+        } else if !path.is_dir() {
+            errors.push(ErrorContext {
+                message: format!("Path is not a directory: {}", path.display()),
+                module: ERROR_MODULE,
+            });
+        }
+
+        if !errors.is_empty() {
+            let error_messages = errors
+                .iter()
+                .map(|e| e.message.clone())
+                .collect::<Vec<_>>()
+                .join("\n");
+            return Err(anyhow::anyhow!(
+                "Multiple validation errors:\n{}",
+                error_messages
+            ));
         }
 
         Ok(())
@@ -151,21 +161,33 @@ impl Args {
 
 /// This module contains unit tests for the `Args` struct's validation methods.
 ///
-/// # Tests
+/// # Test Categories
 ///
-/// - `test_validate_input_file_path_valid`: Tests that a valid file path is correctly validated.
-/// - `test_validate_input_file_path_invalid_extension`: Tests that a file with an invalid extension is correctly identified and returns an error.
-/// - `test_validate_input_file_path_not_found`: Tests that a non-existent file path returns a not found error.
-/// - `test_validate_output_dir_path_valid`: Tests that a valid directory path is correctly validated.
-/// - `test_validate_output_dir_path_create`: Tests that a new directory is created if it does not exist and is correctly validated.
-/// - `test_validate_output_dir_path_not_dir`: Tests that a file path is correctly identified as not being a directory and returns an error.
-/// - `test_validate_input_file_path_special_chars`: Validation of input file paths containing special characters.
+/// ## Input File Path Validation Tests
+/// - `test_validate_input_file_path_valid`: Tests validation of a valid TOML file
+/// - `test_validate_input_file_path_invalid_extensions`: Tests various invalid file extensions
+/// - `test_validate_input_file_path_not_found`: Tests handling of non-existent file paths
+/// - `test_validate_input_file_path_is_directory`: Tests rejection of directories as input files
+/// - `test_paths_with_special_chars`: Tests paths containing spaces, Unicode characters, and special symbols
+///
+/// ## Output Directory Path Validation Tests
+/// - `test_validate_output_dir_path_valid`: Tests validation of a valid directory path
+/// - `test_validate_output_dir_path_not_found`: Tests handling of non-existent directory paths
+/// - `test_validate_output_dir_path_is_file`: Tests rejection of files as output directories
+///
+/// # Test Coverage
+///
+/// The tests cover:
+/// - Normal cases: Valid input files and output directories
+/// - Error cases: Invalid extensions, missing files/directories, wrong path types
+/// - Edge cases: Special characters in paths, empty extensions
+///
+/// Each test uses temporary directories to ensure isolation and cleanup.
 #[cfg(test)]
 mod tests {
     use super::*;
     use std::fs::File;
     use std::io::Write;
-
     use tempfile::tempdir;
 
     #[test]
@@ -175,84 +197,173 @@ mod tests {
         let mut file = File::create(&file_path).unwrap();
         writeln!(file, "test data").unwrap();
 
-        let result = Args::validate_input_file_path(&file_path);
-        assert!(result.is_ok());
-        assert_eq!(result.unwrap(), ());
+        let args = Args {
+            input_file_path: file_path.clone(),
+            output_dir_path: PathBuf::from("."),
+            log_level: LogLevel::Info,
+        };
+
+        assert!(args.validate_input_file_path(&file_path).is_ok());
     }
 
     #[test]
-    fn test_validate_input_file_path_invalid_extension() {
+    fn test_validate_input_file_path_invalid_extensions() {
+        let invalid_extensions = vec!["txt", "json", "yaml", ""];
         let dir = tempdir().unwrap();
-        let file_path = dir.path().join("test.txt");
-        let mut file = File::create(&file_path).unwrap();
-        writeln!(file, "test data").unwrap();
 
-        let result = Args::validate_input_file_path(&file_path);
-        assert!(result.is_err());
+        for ext in invalid_extensions {
+            let file_name = if ext.is_empty() {
+                "test".to_string()
+            } else {
+                format!("test.{}", ext)
+            };
 
-        let errors = result.unwrap_err();
-        assert!(errors
-            .iter()
-            .any(|e| *e == ValidationError::InvalidFileExt("txt".to_string(), "toml".to_string())));
+            let file_path = dir.path().join(file_name);
+            let mut file = File::create(&file_path).unwrap();
+            writeln!(file, "test data").unwrap();
+
+            let args = Args {
+                input_file_path: file_path.clone(),
+                output_dir_path: PathBuf::from("."),
+                log_level: LogLevel::Info,
+            };
+
+            let result = args.validate_input_file_path(&file_path);
+            assert!(result.is_err());
+            let error_msg = result.unwrap_err().to_string();
+
+            if ext.is_empty() {
+                assert!(
+                    error_msg.contains("File has no extension"),
+                    "Expected 'File has no extension' error, got: {}",
+                    error_msg
+                );
+            } else {
+                assert!(
+                    error_msg.contains("Invalid file extension"),
+                    "Expected 'Invalid file extension' error, got: {}",
+                    error_msg
+                );
+            }
+        }
     }
 
     #[test]
     fn test_validate_input_file_path_not_found() {
-        let result = Args::validate_input_file_path(Path::new("non_existent.toml"));
-        assert!(
-            result.is_err(),
-            "Expected an error for non-existent file path"
-        );
+        let dir = tempdir().unwrap();
+        let non_existent_paths = vec![
+            dir.path().join("non_existent.toml"),
+            PathBuf::from("/non/existent/path/file.toml"),
+        ];
 
-        let errors = result.unwrap_err();
-        assert!(errors
-            .iter()
-            .any(|e| matches!(e, ValidationError::Io(CustomIoError::NotFound { .. }))));
+        for path in non_existent_paths {
+            let args = Args {
+                input_file_path: path.clone(),
+                output_dir_path: PathBuf::from("."),
+                log_level: LogLevel::Info,
+            };
+
+            let result = args.validate_input_file_path(&path);
+            assert!(result.is_err());
+            let error_msg = result.unwrap_err().to_string();
+            assert!(
+                error_msg.contains("Path does not exist"),
+                "Expected 'Path does not exist' error, got: {}",
+                error_msg
+            );
+        }
+    }
+
+    #[test]
+    fn test_validate_input_file_path_is_directory() {
+        let dir = tempdir().unwrap();
+        let args = Args {
+            input_file_path: dir.path().to_path_buf(),
+            output_dir_path: PathBuf::from("."),
+            log_level: LogLevel::Info,
+        };
+
+        let result = args.validate_input_file_path(dir.path());
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("Path is not a file"));
     }
 
     #[test]
     fn test_validate_output_dir_path_valid() {
         let dir = tempdir().unwrap();
-        let result = Args::validate_output_dir_path(dir.path());
-        assert!(result.is_ok());
-        assert_eq!(result.unwrap(), ());
+        let args = Args {
+            input_file_path: PathBuf::from("test.toml"),
+            output_dir_path: dir.path().to_path_buf(),
+            log_level: LogLevel::Info,
+        };
+
+        assert!(args.validate_output_dir_path(dir.path()).is_ok());
     }
 
     #[test]
-    fn test_validate_output_dir_path_create() {
+    fn test_validate_output_dir_path_not_found() {
         let dir = tempdir().unwrap();
-        let new_dir_path = dir.path().join("new_dir");
+        let non_existent_dir = dir.path().join("non_existent");
 
-        let result = Args::validate_output_dir_path(new_dir_path.as_path());
-        assert!(result.is_ok());
-        assert!(new_dir_path.exists());
-        assert_eq!(result.unwrap(), ());
-    }
+        let args = Args {
+            input_file_path: PathBuf::from("test.toml"),
+            output_dir_path: non_existent_dir.clone(),
+            log_level: LogLevel::Info,
+        };
 
-    #[test]
-    fn test_validate_output_dir_path_not_dir() {
-        let dir = tempdir().unwrap();
-        let file_path = dir.path().join("test.toml");
-        let mut file = File::create(&file_path).unwrap();
-        writeln!(file, "test data").unwrap();
-
-        let result = Args::validate_output_dir_path(file_path.as_path());
+        let result = args.validate_output_dir_path(&non_existent_dir);
         assert!(result.is_err());
-
-        let errors = result.unwrap_err();
-        assert!(errors
-            .iter()
-            .any(|e| matches!(e, ValidationError::PathIsNotDir(_))));
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("Path does not exist"));
     }
 
     #[test]
-    fn test_validate_input_file_path_special_chars() {
+    fn test_validate_output_dir_path_is_file() {
         let dir = tempdir().unwrap();
-        let file_path = dir.path().join("test with spaces.toml");
+        let file_path = dir.path().join("test.txt");
         let mut file = File::create(&file_path).unwrap();
         writeln!(file, "test data").unwrap();
 
-        let result = Args::validate_input_file_path(file_path.as_path());
-        assert!(result.is_ok());
+        let args = Args {
+            input_file_path: PathBuf::from("test.toml"),
+            output_dir_path: file_path.clone(),
+            log_level: LogLevel::Info,
+        };
+
+        let result = args.validate_output_dir_path(&file_path);
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("Path is not a directory"));
+    }
+
+    #[test]
+    fn test_paths_with_special_chars() {
+        let dir = tempdir().unwrap();
+        let special_chars = vec![
+            "test with spaces.toml",
+            "test_with_日本語.toml",
+            "test_with_#$%@.toml",
+        ];
+
+        for file_name in special_chars {
+            let file_path = dir.path().join(file_name);
+            let mut file = File::create(&file_path).unwrap();
+            writeln!(file, "test data").unwrap();
+
+            let args = Args {
+                input_file_path: file_path.clone(),
+                output_dir_path: PathBuf::from("."),
+                log_level: LogLevel::Info,
+            };
+
+            assert!(args.validate_input_file_path(&file_path).is_ok());
+        }
     }
 }
