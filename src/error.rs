@@ -17,8 +17,8 @@ pub enum Module {
 impl Module {
     pub fn exit_code(&self) -> i32 {
         match self {
-            Module::CliArgsValidation => 1,
-            Module::ConfigFileAnalysis => 2,
+            Module::CliArgsValidation => 2,
+            Module::ConfigFileAnalysis => 78, // EX_CONFIG
         }
     }
 }
