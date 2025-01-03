@@ -1,17 +1,9 @@
-## Overview
-In this section, briefly explain the purpose and summary of this PR.
+## 概要
 
-## Changes
-In this section, list the specific changes or fixes made in this PR as bullet points.
+## 変更点
 
-- Change 1
+## テスト
 
-## Testing
-In this section, describe the test cases or methods related to this PR.
+## 関連するissue
 
-- Test Case 1
-
-## Related Issues
-In this section, link the issues or tasks related to this PR. Use the following format:
-
-- Related Issue: #0
+## 追加情報
