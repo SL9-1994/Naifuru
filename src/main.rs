@@ -17,7 +17,7 @@ fn main() {
             bail_on_error!(error_context.module.exit_code());
         }
 
-        // If ErrorContext cannot be obtained, exit with default error code 1
+        // ErrorContext を取得できない場合は、デフォルトのエラー コード 1 で終了します。
         bail_on_error!(DEFAULT_ERROR_EXIT_CODE);
     }
 }
