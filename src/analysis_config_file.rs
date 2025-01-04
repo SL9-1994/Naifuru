@@ -78,15 +78,15 @@ pub struct Group {
 
 impl Group {
     pub fn valid_path_in_group(&self) -> Result<()> {
-        todo!()
+        Ok(())
     }
 
     pub fn valid_direction_component(&self) -> Result<()> {
-        todo!()
+        Ok(())
     }
 
     pub fn valid_group_key(&self) -> Result<()> {
-        todo!()
+        Ok(())
     }
 }
 
@@ -116,10 +116,6 @@ impl GlobalConfig {
 pub struct GlobalSettings {
     /// output file name format.
     name_format: NameFormat,
-    /// acceleration calculate option bool.
-    acc_calculate: bool,
-    /// unit conversion option bool.
-    unit_conversion: bool,
 }
 
 impl GlobalSettings {
