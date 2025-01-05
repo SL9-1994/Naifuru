@@ -1,5 +1,4 @@
 use std::{
-    collections::HashMap,
     fs,
     path::{Path, PathBuf},
 };
@@ -51,122 +50,35 @@ pub enum NameFormat {
     YyyymmddHhmmssSnN,
 }
 
-pub trait Validate {
-    fn validate(&self) -> Result<()>;
-}
-
-// NOTE: tomlクレートによって、列挙型での入力値のバリデーションが行われるため、この構造体ではバリデーションの実装を行いません。
-#[derive(Debug, Serialize, Deserialize)]
-pub struct Conversion {
-    /// Before conversion.
-    from: From,
-    /// After conversion.
-    to: To,
-    /// File configuration groups.
-    groups: Vec<Group>,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct Group {
-    /// Specify file path to be analyzed.
-    pub path: PathBuf,
-    /// direction component identifier(ns, ew, ud).
-    pub direction: Option<AccAxis>,
-    /// identifier key for grouping.
-    pub g_key: Option<u32>,
-}
-
-impl Group {
-    pub fn valid_path_in_group(&self) -> Result<()> {
-        Ok(())
-    }
-
-    pub fn valid_direction_component(&self) -> Result<()> {
-        Ok(())
-    }
-
-    pub fn valid_group_key(&self) -> Result<()> {
-        Ok(())
-    }
-}
-
-impl Validate for Group {
-    fn validate(&self) -> Result<()> {
-        self.valid_direction_component()?;
-        self.valid_group_key()?;
-        self.valid_path_in_group()?;
-
-        Ok(())
-    }
-}
-
-// NOTE: tomlクレートによって、列挙型での入力値のバリデーションが行われるため、この構造体ではバリデーションの実装を行いません。
-#[derive(Debug, Serialize, Deserialize)]
-pub struct GlobalConfig {
-    pub config: GlobalSettings,
-}
-
-impl GlobalConfig {
-    pub fn validate(&self) {
-        todo!()
-    }
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct GlobalSettings {
-    /// output file name format.
-    name_format: NameFormat,
-}
-
-impl GlobalSettings {
-    pub fn validate(&self) {
-        todo!()
-    }
-}
-
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Config {
-    pub conversions: Vec<Conversion>,
     pub global: GlobalConfig,
+    pub conversion: Vec<ConversionConfig>,
 }
 
-impl Config {
-    pub fn validate(&self) {
-        todo!()
-    }
+#[derive(Debug, Serialize, Deserialize)]
+pub struct GlobalConfig {
+    pub name_format: NameFormat,
+}
 
-    pub fn group_by_key(&self) -> Result<Vec<Vec<&Group>>> {
-        let mut result: Vec<Vec<&Group>> = Vec::new();
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ConversionConfig {
+    pub id: u16,
+    pub from: From,
+    pub to: To,
+    pub group: Vec<GroupConfig>,
+}
 
-        for (i, conversion) in self.conversions.iter().enumerate() {
-            let mut grouped: HashMap<Option<u32>, Vec<&Group>> = HashMap::new();
+#[derive(Debug, Serialize, Deserialize)]
+pub struct GroupConfig {
+    pub id: u16,
+    pub files: Vec<FileConfig>,
+}
 
-            // Group keyによるグループ化を行う。
-            for group in &conversion.groups {
-                grouped.entry(group.g_key).or_default().push(group);
-            }
-
-            // Group keyがNoneである個別要素は、異なる種類としてグルーピングします。
-            for (key, groups) in grouped {
-                if groups.is_empty() {
-                    return Err(anyhow::anyhow!(ErrorContext {
-                        message: format!("Empty group found for key {:?} in conversion {}", key, i),
-                        module: ERROR_MODULE,
-                    }));
-                }
-                result.push(groups);
-            }
-        }
-
-        if result.is_empty() {
-            return Err(anyhow::anyhow!(ErrorContext {
-                message: "No valid groups found in configuration".to_string(),
-                module: ERROR_MODULE,
-            }));
-        }
-
-        Ok(result)
-    }
+#[derive(Debug, Serialize, Deserialize)]
+pub struct FileConfig {
+    pub path: PathBuf,
+    pub acc_axis: Option<AccAxis>,
 }
 
 pub fn read_config_from_input_file(input_file_path: &Path) -> Result<String> {
