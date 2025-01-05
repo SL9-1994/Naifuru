@@ -191,7 +191,7 @@ mod tests {
 
             if ext.is_empty() {
                 assert!(
-                    errors.contains(&CliErr::ArgsValidation(ArgsValidationErr::NoExtension(
+                    errors.contains(&CliErr::Validation(ArgsValidationErr::NoExtension(
                         file_path
                     ))),
                     "Expected 'NoExtension' error, got: {:?}",
@@ -199,9 +199,10 @@ mod tests {
                 );
             } else {
                 assert!(
-                    errors.contains(&CliErr::ArgsValidation(
-                        ArgsValidationErr::InvalidExtension(ext.to_string(), "toml".to_string())
-                    )),
+                    errors.contains(&CliErr::Validation(ArgsValidationErr::InvalidExtension(
+                        ext.to_string(),
+                        "toml".to_string()
+                    ))),
                     "Expected 'InvalidExtension' error, got: {:?}",
                     errors
                 );
@@ -224,9 +225,9 @@ mod tests {
         let errors = result.unwrap_err();
 
         assert!(
-            errors.contains(&CliErr::ArgsValidation(
-                ArgsValidationErr::PathDoesNotExist(non_existent_file_path.to_path_buf())
-            )),
+            errors.contains(&CliErr::Validation(ArgsValidationErr::PathDoesNotExist(
+                non_existent_file_path.to_path_buf()
+            ))),
             "Expected 'PathDoesNotExist' error, got: {:?}",
             errors
         );
@@ -246,7 +247,7 @@ mod tests {
         let errors = result.unwrap_err();
 
         assert!(
-            errors.contains(&CliErr::ArgsValidation(ArgsValidationErr::PathIsNotFile(
+            errors.contains(&CliErr::Validation(ArgsValidationErr::PathIsNotFile(
                 dir.path().display().to_string().into()
             ))),
             "Expected 'PathIsNotFile' error, got: {:?}",
@@ -282,9 +283,9 @@ mod tests {
         let errors = result.unwrap_err();
 
         assert!(
-            errors.contains(&CliErr::ArgsValidation(
-                ArgsValidationErr::PathDoesNotExist(non_existent_dir.to_path_buf())
-            )),
+            errors.contains(&CliErr::Validation(ArgsValidationErr::PathDoesNotExist(
+                non_existent_dir.to_path_buf()
+            ))),
             "Expected 'PathDoesNotExist' error, got: {:?}",
             errors
         );
@@ -308,9 +309,9 @@ mod tests {
         let errors = result.unwrap_err();
 
         assert!(
-            errors.contains(&CliErr::ArgsValidation(
-                ArgsValidationErr::PathIsNotDirectory(file_path.to_path_buf())
-            )),
+            errors.contains(&CliErr::Validation(ArgsValidationErr::PathIsNotDirectory(
+                file_path.to_path_buf()
+            ))),
             "Expected 'PathIsNotDirectory' error, got: {:?}",
             errors
         );
