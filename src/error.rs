@@ -85,6 +85,14 @@ pub enum ArgsValidationErr {
 pub enum ConfigValidationErr {
     #[error("{0} axis component file is missing in group id: {1}")]
     AccAxisDoesNotExist(String, u16),
+    #[error("The extension is {0} even though the possible extensions for this From are {1}")]
+    InvalidExtension(String, String),
+    #[error("File has no extension: {0}")]
+    NoExtension(PathBuf),
+    #[error("Path does not exist: {0}")]
+    PathDoesNotExist(PathBuf),
+    #[error("Path is not a file: {0}")]
+    PathIsNotFile(PathBuf),
 }
 
 // PartialEq, Eqの実装を行うための、std::io::ErrorをラップするカスタムI/Oエラー型
