@@ -1,49 +1,48 @@
-use std::fs;
-
-use anyhow::{Context, Result};
 use log::{debug, error};
 use naifuru::{
-    analysis_config_file::Config, bail_on_error, cli::Args, error::ErrorContext,
+    analysis_config_file::{read_config_from_input_file, Config},
+    bail_on_error,
+    cli::Args,
+    error::AppError,
     logging::init_logger,
 };
 
 const DEFAULT_ERROR_EXIT_CODE: i32 = 1;
 
 fn main() {
-    if let Err(e) = run() {
-        error!("{e:?}");
-
-        if let Some(error_context) = e.downcast_ref::<ErrorContext>() {
-            bail_on_error!(error_context.module.exit_code());
+    if let Err(errors) = run() {
+        for error in &errors {
+            error!("{}", error);
         }
 
-        // ErrorContext を取得できない場合は、デフォルトのエラー コード 1 で終了します。
-        bail_on_error!(DEFAULT_ERROR_EXIT_CODE);
+        // 最初のエラーからexit_codeを決定、また、exit_codeを取得できない場合はDEFAULT_ERROR_EXIT_CODEで終了します。
+        let exit_code = errors
+            .first()
+            .map_or(DEFAULT_ERROR_EXIT_CODE, |e| e.exit_code());
+
+        bail_on_error!(exit_code);
     }
 }
 
-fn run() -> Result<()> {
+fn run() -> Result<(), Vec<AppError>> {
     let args = Args::new();
 
-    init_logger(args.log_level.into())?;
+    // TODO: 非推奨: unwrap()
+    init_logger(args.log_level.into()).unwrap();
     debug!("The loglevel has been set.");
 
     args.validate()?;
-    debug!("Validation check completed.");
+    debug!("Cli args validation check completed.");
 
-    let config_toml_str = fs::read_to_string(&args.input_file_path).with_context(|| {
-        format!(
-            "Failed to read config file: {}",
-            args.input_file_path.display()
-        )
-    })?;
+    let config_toml_str = read_config_from_input_file(&args.input_file_path)
+        .map_err(|e| vec![AppError::AnalysisConfig(e.into())])?;
     debug!("Analysis configuration file loading is complete.");
 
     let config: Config =
-        toml::from_str(&config_toml_str).with_context(|| "Failed to parse TOML configuration")?;
+        toml::from_str(&config_toml_str).map_err(|e| vec![AppError::AnalysisConfig(e.into())])?;
     debug!("Analysis configuration file parsing is complete.");
 
-    print!("{config:#?}");
+    println!("{config:#?}");
 
     Ok(())
 }
