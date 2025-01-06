@@ -7,6 +7,8 @@ use crate::{
     logging::LogLevel,
 };
 
+const ACCEPTABLE_EXTS: [&str; 1] = ["toml"];
+
 /// This module defines the command-line interface (CLI) for the application using the `clap` crate.
 /// It includes the `Args` struct which represents the parsed command-line arguments and provides
 /// methods for validation of these arguments.
@@ -70,15 +72,14 @@ impl Args {
 
     fn validate_input_file_path(&self, path: &Path) -> Result<(), Vec<CliErr>> {
         let mut errors: Vec<CliErr> = Vec::new();
-        let valid_extensions: [&str; 1] = ["toml"];
 
         if let Some(extension) = path
             .extension()
             .map(|ext| ext.to_string_lossy().to_lowercase())
         {
-            if !valid_extensions.contains(&extension.as_str()) {
+            if !ACCEPTABLE_EXTS.contains(&extension.as_str()) {
                 errors.push(
-                    ArgsValidationErr::InvalidExtension(extension, valid_extensions.join(", "))
+                    ArgsValidationErr::InvalidExtension(extension, ACCEPTABLE_EXTS.join(", "))
                         .into(),
                 );
             }
