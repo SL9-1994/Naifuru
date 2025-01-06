@@ -20,11 +20,28 @@ pub enum AppError {
     AnalysisConfig(#[from] AnalysisConfigErr),
 }
 
+impl AppError {
+    pub fn exit_code(&self) -> i32 {
+        match self {
+            AppError::Cli(e) => e.exit_code(),
+            AppError::AnalysisConfig(e) => e.exit_code(),
+        }
+    }
+}
+
 #[non_exhaustive]
 #[derive(Error, Debug, PartialEq, Eq)]
 pub enum CliErr {
     #[error("Args validation error> {0}")]
     Validation(#[from] ArgsValidationErr),
+}
+
+impl CliErr {
+    pub fn exit_code(&self) -> i32 {
+        match self {
+            CliErr::Validation(_) => 2,
+        }
+    }
 }
 
 #[non_exhaustive]
@@ -36,6 +53,16 @@ pub enum AnalysisConfigErr {
     Parse(#[from] toml::de::Error),
     #[error("I/O error> {0}")]
     Io(#[from] IoErrWrapper),
+}
+
+impl AnalysisConfigErr {
+    pub fn exit_code(&self) -> i32 {
+        match self {
+            AnalysisConfigErr::Validation(_) => 3,
+            AnalysisConfigErr::Parse(_) => 5,
+            AnalysisConfigErr::Io(_) => 4,
+        }
+    }
 }
 
 #[non_exhaustive]
