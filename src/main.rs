@@ -27,22 +27,22 @@ fn main() {
 fn run() -> Result<(), Vec<AppError>> {
     let args = Args::new();
 
-    // TODO: 非推奨: unwrap()
     init_logger(args.log_level.into()).unwrap();
-    debug!("The loglevel has been set.");
+    debug!("The logging level has been set successfully.");
 
     args.validate()?;
-    debug!("Cli args validation check completed.");
+    debug!("The CLI args have been validated successfully.");
 
     let config_toml_str = read_config_from_input_file(&args.input_file_path)
         .map_err(|e| vec![AppError::AnalysisConfig(e.into())])?;
-    debug!("Analysis configuration file loading is complete.");
+    debug!("The analysis configuration file has been loaded successfully.");
 
     let config: Config =
         toml::from_str(&config_toml_str).map_err(|e| vec![AppError::AnalysisConfig(e.into())])?;
-    debug!("Analysis configuration file parsing is complete.");
+    debug!("The analysis configuration file has been parsed successfully.");
 
-    println!("{config:#?}");
+    config.validate()?;
+    debug!("The analysis configuration file has been validated successfully.");
 
     Ok(())
 }
