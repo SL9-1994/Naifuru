@@ -1,14 +1,8 @@
-use std::{
-    fs,
-    path::{Path, PathBuf},
-};
+use std::path::{Path, PathBuf};
 
-use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
 
-use crate::error::{ErrorContext, Module};
-
-const ERROR_MODULE: Module = Module::ConfigFileAnalysis;
+use crate::error::IoErrWrapper;
 
 /// File format before conversion.  
 #[derive(Debug, Serialize, Deserialize)]
@@ -81,9 +75,8 @@ pub struct FileConfig {
     pub acc_axis: Option<AccAxis>,
 }
 
-pub fn read_config_from_input_file(input_file_path: &Path) -> Result<String> {
-    fs::read_to_string(input_file_path).with_context(|| ErrorContext {
-        message: format!("Failed to read config file: {}", input_file_path.display()),
-        module: ERROR_MODULE,
-    })
+pub fn read_config_from_input_file(input_file_path: &Path) -> Result<String, IoErrWrapper> {
+    let config: String = std::fs::read_to_string(input_file_path)?;
+
+    Ok(config)
 }
