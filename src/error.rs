@@ -68,31 +68,39 @@ impl AnalysisConfigErr {
 #[non_exhaustive]
 #[derive(Error, Debug, PartialEq, Eq)]
 pub enum ArgsValidationErr {
-    #[error("File has no extension: {0}")]
+    #[error("File has no extension: '{0}'")]
     NoExtension(PathBuf),
-    #[error("Invalid file extension: {0}, expected one of: {1}")]
+    #[error("Invalid file extension: '{0}', expected one of: '{1}'")]
     InvalidExtension(String, String),
-    #[error("Path does not exist: {0}")]
+    #[error("Path does not exist: '{0}'")]
     PathDoesNotExist(PathBuf),
-    #[error("Path is not a file: {0}")]
+    #[error("Path is not a file: '{0}'")]
     PathIsNotFile(PathBuf),
-    #[error("Path is not a directory: {0}")]
+    #[error("Path is not a directory: '{0}'")]
     PathIsNotDirectory(PathBuf),
 }
 
 #[non_exhaustive]
 #[derive(Error, Debug, PartialEq, Eq)]
 pub enum ConfigValidationErr {
-    #[error("{0} axis component file is missing in group id: {1}")]
-    AccAxisDoesNotExist(String, u16),
-    #[error("The extension is {0} even though the possible extensions for this From are {1}")]
+    #[error("The extension is {0} even though the possible extensions for this From are '{1}'")]
     InvalidExtension(String, String),
-    #[error("File has no extension: {0}")]
+    #[error("File has no extension: '{0}'")]
     NoExtension(PathBuf),
-    #[error("Path does not exist: {0}")]
+    #[error("Path does not exist: '{0}'")]
     PathDoesNotExist(PathBuf),
-    #[error("Path is not a file: {0}")]
+    #[error("Path is not a file: '{0}'")]
     PathIsNotFile(PathBuf),
+    #[error("'{0}' does not require acc_axis but was set: name:'{1}', id:'{2}'")]
+    MismatchedAccAxis(String, String, usize),
+    #[error(
+        "'{0}' format requires acc_axis to be 'ns, ew, ud' but was not set: name:'{1}', id:'{2}'"
+    )]
+    DuplicateAccAxis(String, String, usize),
+    #[error("acc_axis does not exist: name:'{0}', id:'{1}'")]
+    RequiredAccAxis(String, usize),
+    #[error("Duplicate names, each NAME must be unique: '{0}'")]
+    DuplicateNames(String),
 }
 
 // PartialEq, Eqの実装を行うための、std::io::ErrorをラップするカスタムI/Oエラー型
