@@ -18,13 +18,16 @@ pub enum AppError {
     Cli(#[from] CliErr),
     #[error("AnalysisConfig error> {0}")]
     AnalysisConfig(#[from] AnalysisConfigErr),
+    #[error("Analysis error> {0}")]
+    Analysis(#[from] AnalysisErr),
 }
 
 impl AppError {
     pub fn exit_code(&self) -> i32 {
         match self {
-            AppError::Cli(e) => e.exit_code(),
-            AppError::AnalysisConfig(e) => e.exit_code(),
+            Self::Cli(e) => e.exit_code(),
+            Self::AnalysisConfig(e) => e.exit_code(),
+            Self::Analysis(e) => e.exit_code(),
         }
     }
 }
@@ -39,7 +42,7 @@ pub enum CliErr {
 impl CliErr {
     pub fn exit_code(&self) -> i32 {
         match self {
-            CliErr::Validation(_) => 2,
+            Self::Validation(_) => 2,
         }
     }
 }
@@ -58,9 +61,9 @@ pub enum AnalysisConfigErr {
 impl AnalysisConfigErr {
     pub fn exit_code(&self) -> i32 {
         match self {
-            AnalysisConfigErr::Validation(_) => 3,
-            AnalysisConfigErr::Parse(_) => 5,
-            AnalysisConfigErr::Io(_) => 4,
+            Self::Validation(_) => 3,
+            Self::Parse(_) => 5,
+            Self::Io(_) => 4,
         }
     }
 }
@@ -101,6 +104,28 @@ pub enum ConfigValidationErr {
     RequiredAccAxis(String, usize),
     #[error("Duplicate names, each NAME must be unique: '{0}'")]
     DuplicateNames(String),
+}
+
+#[non_exhaustive]
+#[derive(Error, Debug, PartialEq, Eq)]
+pub enum AnalysisErr {
+    #[error("Data extraction error> {0}")]
+    Extraction(#[from] DataExtractionErr),
+}
+
+impl AnalysisErr {
+    pub fn exit_code(&self) -> i32 {
+        match self {
+            Self::Extraction(_) => 6,
+        }
+    }
+}
+
+#[non_exhaustive]
+#[derive(Error, Debug, PartialEq, Eq)]
+pub enum DataExtractionErr {
+    #[error("Invalid data structure: path{0}")]
+    InvalidStructure(PathBuf),
 }
 
 // PartialEq, Eqの実装を行うための、std::io::ErrorをラップするカスタムI/Oエラー型
