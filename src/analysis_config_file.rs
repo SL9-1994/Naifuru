@@ -299,8 +299,8 @@ impl FileConfig {
         {
             if !acceptable_exts.contains(&extension.as_str()) {
                 return Err(ConfigValidationErr::InvalidExtension(
-                    acceptable_exts.join(", "),
                     extension,
+                    acceptable_exts.join(", "),
                 )
                 .into());
             }
