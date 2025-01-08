@@ -83,7 +83,7 @@ pub enum ArgsValidationErr {
 #[non_exhaustive]
 #[derive(Error, Debug, PartialEq, Eq)]
 pub enum ConfigValidationErr {
-    #[error("The extension is {0} even though the possible extensions for this From are '{1}'")]
+    #[error("The extension is '{0}' even though the possible extensions for this From are '{1}'")]
     InvalidExtension(String, String),
     #[error("File has no extension: '{0}'")]
     NoExtension(PathBuf),
