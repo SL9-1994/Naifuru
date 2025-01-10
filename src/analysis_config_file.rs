@@ -11,7 +11,7 @@ use crate::error::{AnalysisConfigErr, AppError, ConfigValidationErr, IoErrWrappe
 const MULTIPLE_AXIS_TYPE: [&From; 2] = [&From::JpNiedKnet, &From::TkAfadAsc];
 
 /// File format before conversion.  
-#[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone)]
 #[serde(rename_all = "snake_case")]
 pub enum From {
     JpNiedKnet,
@@ -36,7 +36,7 @@ impl From {
 }
 
 /// File format after conversion.
-#[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone)]
 #[serde(rename_all = "snake_case")]
 pub enum To {
     JpJmaCsv,
@@ -44,7 +44,7 @@ pub enum To {
 }
 
 /// File format before conversion.
-#[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone)]
 #[serde(rename_all = "snake_case")]
 pub enum AccAxis {
     Ns,
@@ -124,7 +124,7 @@ pub struct GlobalConfig {
     pub name_format: NameFormat,
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone)]
 pub struct ConversionConfig {
     pub name: String,
     pub from: From,
@@ -166,7 +166,7 @@ impl ConversionConfig {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone)]
 pub struct GroupConfig {
     pub files: Vec<FileConfig>,
 }
@@ -251,7 +251,7 @@ impl GroupConfig {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone)]
 pub struct FileConfig {
     pub path: PathBuf,
     pub acc_axis: Option<AccAxis>,
