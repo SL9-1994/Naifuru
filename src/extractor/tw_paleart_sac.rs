@@ -1,13 +1,9 @@
-use crate::{
-    analysis_config_file::{Config, ConversionConfig},
-    error::{AnalysisErr, AppError},
-};
+use crate::{analysis_config_file::ConversionConfig, error::AppError};
 
 use super::{ExtractedData, Extractor};
 
 pub struct TwPalertSacExtractor {
-    // 抽出前ファイル内容
-    unextracted: ConversionConfig,
+    pub unextracted: ConversionConfig,
 }
 
 impl Extractor for TwPalertSacExtractor {
@@ -20,9 +16,5 @@ impl Extractor for TwPalertSacExtractor {
 impl TwPalertSacExtractor {
     pub fn new(unextracted: ConversionConfig) -> Self {
         Self { unextracted }
-    }
-
-    fn extract_acc_values(&self) {
-        todo!()
     }
 }
