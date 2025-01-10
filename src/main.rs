@@ -4,6 +4,7 @@ use naifuru::{
     bail_on_error,
     cli::Args,
     error::AppError,
+    extractor::create_extractor,
     logging::init_logger,
 };
 
@@ -43,6 +44,16 @@ fn run() -> Result<(), Vec<AppError>> {
 
     config.validate()?;
     debug!("The analysis configuration file has been validated successfully.");
+
+    // MEMO: グループごとに処理
+    for conv_config in config.conversion {
+        let extractor = create_extractor(conv_config);
+        debug!("The data extractor has been created successfully.");
+
+        let _extracted = extractor.extract()?;
+
+        // TODO: 抽出されたデータを使用して、ToへのConverterを呼び出す。
+    }
 
     Ok(())
 }
