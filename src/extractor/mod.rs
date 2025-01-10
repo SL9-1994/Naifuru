@@ -1,10 +1,30 @@
-use crate::error::AnalysisErr;
+use tw_paleart_sac::TwPalertSacExtractor;
 
-pub mod jp_jma_csv;
-pub mod jp_stera3d_txt;
+use crate::{
+    analysis_config_file::{ConversionConfig, From},
+    error::AppError,
+};
+
+pub mod jp_nied_knet;
+pub mod nz_geonet_v1a_v2a;
+pub mod tk_afad_asc;
+pub mod tw_paleart_sac;
+pub mod us_scsn_v2;
 
 pub trait Extractor {
-    fn extract(&self) -> Result<ExtractedData, AnalysisErr>;
+    fn extract(&self) -> Result<ExtractedData, Vec<AppError>>;
+}
+
+pub fn create_extractor(conversion: ConversionConfig) -> Box<dyn Extractor> {
+    // fromに対応するextractorを呼び出す
+    match &conversion.from {
+        From::JpNiedKnet => todo!(),
+        From::UsScsnV2 => todo!(),
+        From::NzGeonetV1a => todo!(),
+        From::NzGeonetV2a => todo!(),
+        From::TwPalertSac => Box::new(TwPalertSacExtractor::new(conversion)),
+        From::TkAfadAsc => todo!(),
+    }
 }
 
 pub enum ExtractedData {
@@ -14,7 +34,7 @@ pub enum ExtractedData {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct JpStera3dTxtData {
-    num_of_elements: i32,
+    num_of_elements: u32,
     acc_values: Acceleration,
     common: CommonValue,
 }
